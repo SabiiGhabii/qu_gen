@@ -1,0 +1,82 @@
+root/
+├─ pyproject.toml
+├─ README.md
+├─ data/
+│  ├─ db/                         # per-scan databases
+│  │  └─ api_index.db
+│  ├─ cards/                      # generated cards by language/lib
+│  │  └─ python/
+│  │     └─ pandas/cards.ctdsl
+│  ├─ questions/                  # generated questions
+│  │  └─ python/pandas/q_*.json
+│  └─ fixtures/                   # tiny deterministic inputs per language/lib
+│     └─ python/pandas/
+├─ scripts/
+│  ├─ init_db.bat
+│  └─ db/open_db.bat
+├─ docs/                          # brief how-to + design notes
+├─ src/
+│  └─ codetutor/
+│     ├─ core/                    # language-agnostic engine
+│     │  ├─ dsl/
+│     │  │  ├─ ctdsl.lark        # grammar (finalized)
+│     │  │  ├─ loader.py         # parse .ctdsl → IR (Card, traits)
+│     │  │  └─ emit.py           # (stub) write facts/cards back to DB if needed
+│     │  ├─ ir/
+│     │  │  ├─ card.py           # dataclasses for Card/Profile/Trait
+│     │  │  └─ recipe.py         # (stub) DAG for multi-step “recipes”
+│     │  ├─ planner/
+│     │  │  ├─ compat.py         # returns==accepts (+ simple extras)
+│     │  │  ├─ z3core.py         # Z3 C1/C2 + soft constraints
+│     │  │  └─ selector.py       # (stub) policy combining bandits/priors
+│     │  ├─ generation/
+│     │  │  ├─ arg_sampler.py    # sample kwargs from pre.args
+│     │  │  ├─ realize_base.py   # interface: build runnable code from plan
+│     │  │  └─ text.py           # (stub) NL templates + optional QG hook
+│     │  ├─ sandbox/
+│     │  │  ├─ runner.py         # subprocess+timeout
+│     │  │  └─ inspectors.py     # output fingerprinting/validators
+│     │  ├─ heuristics/
+│     │  │  ├─ rules.yaml        # (stub) declarative rules
+│     │  │  └─ engine.py         # (stub) apply rules, merge facts
+│     │  ├─ learning/
+│     │  │  ├─ stats.py          # (stub) api/edge/arg/mutator beta counters
+│     │  │  ├─ bandits.py        # (stub) Thompson sampling
+│     │  │  └─ macros.py         # (stub) mine/promote frequent subgraphs
+│     │  ├─ nn/
+│     │  │  ├─ embeddings.py     # (stub) sentence/code embeddings + storage
+│     │  │  └─ neighbors.py      # (stub) nearest-neighbor helpers
+│     │  └─ cli/
+│     │     ├─ gen_question.py   # load cards → plan → realize → sandbox → save
+│     │     └─ mutate.py         # (stub) produce mutated variants
+│     ├─ adapters/                # per-language integrations (scan, realize, trait packs)
+│     │  ├─ python/
+│     │  │  ├─ scan/
+│     │  │  │  ├─ scan.py        # your scanner (moved here)
+│     │  │  │  └─ schema.sql     # your schema (moved here)
+│     │  │  ├─ synth/
+│     │  │  │  └─ synth_cards.py # library-agnostic card synthesizer (Python scan DB)
+│     │  │  ├─ realize/
+│     │  │  │  ├─ pandas_realizer.py  # implements realize_base for pandas
+│     │  │  │  └─ sklearn_realizer.py # (stub) sklearn fixture/calls
+│     │  │  └─ traits/
+│     │  │     ├─ pandas_pack.yaml    # (stub) enums/profiles/macros for pandas
+│     │  │     └─ sklearn_pack.yaml   # (stub) for sklearn
+│     │  ├─ rust/                      # future
+│     │  │  ├─ scan/ ...               # rustdoc/rust-analyzer intake
+│     │  │  ├─ synth/ ...
+│     │  │  ├─ realize/ ...
+│     │  │  └─ traits/ ...
+│     │  ├─ js/                        # future
+│     │  └─ (other languages)/
+│     └─ utils/
+│        ├─ db.py                  # your DB utility class
+│        ├─ io.py                  # read/write JSONL, safe paths
+│        └─ logging.py             # (stub) simple logger setup
+└─ tests/
+   ├─ unit/
+   │  ├─ test_loader.py
+   │  ├─ test_planner.py
+   │  └─ test_realize_pandas.py
+   └─ e2e/
+      └─ test_engine_pandas.py

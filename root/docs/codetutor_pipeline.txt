@@ -1,0 +1,56 @@
+venv, pip-tools, subprocess, resource, psutil
+Create isolated, reproducible sandbox with hard time/mem limits.
+
+BeautifulSoup4, Sphinx+docutils, nbformat+jupytext, docstring_parser
+Ingest HTML/RST/notebooks; extract runnable code; harvest docstrings.
+
+griffe, inspect, jedi, parso
+Enumerate public APIs; record signatures, owners, annotations, import graph.
+
+libcst, tree-sitter
+Parse code/examples losslessly; extract calls, dataflow, and edit safely.
+
+NetworkX, GraphGen4Code
+Build multi-relational API/usage graph; import mined relations when available.
+
+5*. Lark, textX, msgspec, (optional) Scallop, DeepProbLog
+Define shared trait-DSL + IR; optionally add probabilistic rule scoring.
+
+jsonschema, ruamel.yaml, sqlite3, DuckDB, blake3
+Validate specs; persist IR/problems; analytics; content hashing/provenance.
+
+7*. Hypothesis, pytest, numpy, pandas, matplotlib, Pillow, imagehash
+Probe APIs on tiny fixtures; infer verifiable pre/post traits; inspect artifacts.
+
+8*. Popper (ILP), Metagol
+Induce composition rules/meta-rules from successes/failures.
+
+9*. Z3, cvc5 (SyGuS)
+Check trait constraints; synthesize small missing expressions/guards.
+
+10*. TF-Coder, BUSTLE, CrossBeam/LambdaBeam (domain-targeted)
+Guide search for arrays/higher-order constructs and useful intermediates.
+
+11*. NetworkX, ray, PyO3+maturin / pybind11, subprocess/resource
+Plan with trait-distance + MC/beam; parallel rollouts; execute/validate variants.
+
+12*. egglog-python, egg
+Canonicalize/equality-saturate pipelines; dedupe; pick lowest-cost forms.
+
+13*. Z3, Rosette
+Verify families of solutions meet traits; refine specs via counterexamples.
+
+lmqg, Jinja2, f-strings
+Generate concise question stems; render deterministic templates/answers.
+
+sentence-transformers, DuckDB, sqlite3
+Rank by diversity/novelty/coverage; compute per-API coverage metrics.
+
+Chroma, sentence-transformers
+Index problems/witnesses for retrieval, personalization, and curriculum.
+
+gephistreamer
+Visualize knowledge/coverage graph live; highlight learned areas.
+
+msgspec, jsonschema, pytest
+Fast IO for IR/problems; schema guards; end-to-end test harness

@@ -1,0 +1,61 @@
+# FILE: src/codetutor/ctdsl/ctdsl.lark
+# DSL grammar v0 - traits/profiles/cards/modal operators/link sugar
+
+?start: header? topdef+
+topdef: enum_def | trait_def | profile_def | card_def 
+
+header: "ontology" "v" INT
+
+# ===== enums & traits =====
+enum_def: "enum" CNAME ":" name_list
+name_list: CNAME ("," CNAME)*
+
+trait_def: "trait" CNAME "(" type ")"
+type: "bool" | "int" | "float" | "text" | "type" | "qualname" 
+	| "enum" "<" CNAME ">"
+	| "shape" | "tuple" 
+	| "list" "<" type ">"
+	
+# ===== profiles & cards =====
+profile_def: "profile" CNAME "{" stmt* "}"
+card_def: "card" QUALNAME ":" CNAME "{" stmt* "}" 
+#QUALNAME like pandas.DataFrame.sort_values
+
+#A statement inside profile/card: facts or links (sugar)
+stmt: fact | modal_fact | link_stmt
+
+#Basic fact: pre./post/ namespace + key = value
+fact: phase "." CNAME "=" value ";"?
+phase: "pre" | "post"
+
+#Modal operators
+modal_fact: modal phase "." CNAME "=" value ";"
+modal: "must" -> MUST | "can" -> CAN
+
+link_stmt: rel link_target ";"?
+rel: "by"        -> BY
+   | "of"        -> OF
+   | "in" "order" "to" -> GOAL
+link_target: QUALNAME | ESCAPED_STRING
+
+# ---------- values ----------
+value: SIGNED_NUMBER
+     | ESCAPED_STRING
+     | "true"      -> true
+     | "false"     -> false
+     | tuple_value
+     | list_value
+
+tuple_value: "(" [value ("," value)*] ")"      -> tuple
+list_value:  "[" [value ("," value)*] "]"      -> list
+
+# ---------- tokens & ignores ----------
+QUALNAME: /[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+/
+
+%import common.CNAME
+%import common.ESCAPED_STRING
+%import common.SIGNED_NUMBER
+%import common.INT
+%import common.WS
+%ignore WS
+%ignore /#[^\n]*/

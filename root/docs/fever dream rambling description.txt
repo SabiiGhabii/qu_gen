@@ -1,0 +1,421 @@
+## MAIN PIPELINE DESCRIPTION (9/3/2025)
+
+# Starred sections (*) represent method for generating nondeterministic questions
+
+venv, pip-tools, subprocess, resource, psutil
+Create isolated, reproducible sandbox with hard time/mem limits.
+
+BeautifulSoup4, Sphinx+docutils, nbformat+jupytext, docstring_parser
+Ingest HTML/RST/notebooks; extract runnable code; harvest docstrings.
+
+griffe, inspect, jedi, parso
+Enumerate public APIs; record signatures, owners, annotations, import graph.
+
+libcst, tree-sitter
+Parse code/examples losslessly; extract calls, dataflow, and edit safely.
+
+NetworkX, GraphGen4Code
+Build multi-relational API/usage graph; import mined relations when available.
+
+5*. Lark, textX, msgspec, (optional) Scallop, DeepProbLog
+Define shared trait-DSL + IR; optionally add probabilistic rule scoring.
+
+jsonschema, ruamel.yaml, sqlite3, DuckDB, blake3
+Validate specs; persist IR/problems; analytics; content hashing/provenance.
+
+7*. Hypothesis, pytest, numpy, pandas, matplotlib, Pillow, imagehash
+Probe APIs on tiny fixtures; infer verifiable pre/post traits; inspect artifacts.
+
+8*. Popper (ILP), Metagol
+Induce composition rules/meta-rules from successes/failures.
+
+9*. Z3, cvc5 (SyGuS)
+Check trait constraints; synthesize small missing expressions/guards.
+
+10*. TF-Coder, BUSTLE, CrossBeam/LambdaBeam (domain-targeted)
+Guide search for arrays/higher-order constructs and useful intermediates.
+
+11*. NetworkX, ray, PyO3+maturin / pybind11, subprocess/resource
+Plan with trait-distance + MC/beam; parallel rollouts; execute/validate variants.
+
+12*. egglog-python, egg
+Canonicalize/equality-saturate pipelines; dedupe; pick lowest-cost forms.
+
+13*. Z3, Rosette
+Verify families of solutions meet traits; refine specs via counterexamples.
+
+lmqg, Jinja2, f-strings
+Generate concise question stems; render deterministic templates/answers.
+
+sentence-transformers, DuckDB, sqlite3
+Rank by diversity/novelty/coverage; compute per-API coverage metrics.
+
+Chroma, sentence-transformers
+Index problems/witnesses for retrieval, personalization, and curriculum.
+
+gephistreamer
+Visualize knowledge/coverage graph live; highlight learned areas.
+
+msgspec, jsonschema, pytest
+Fast IO for IR/problems; schema guards; end-to-end test harness
+
+=====================================================================================
+-------------------------------------------------------------------------------------
+=====================================================================================
+&&& ## PROMPT - NEW
+Okay, so I'm giving up this approach. I'm going to use LLMs/agents. 
+
+The workflow for the program should be as follows: 
+1. Docs/code presented to agents
+2. Agents go through documentation in chunks and mark all unique APIs, patterns, recipes, etc. Any semantically meaningful unit or combination of units of APIs - also store any necessary and meaningful information related to each of these units/APIs (you'll have to help me with this in terms of what needs to be stored for each API; at the very least an ID, a library or content source ID, the API itself in its general form, perhaps some data regarding its args if a function or data type, metadata, a natural language-friendly explanation of it, maybe even an example of how to use it in context - your input will be needed here). Agents should also have some ability to record information about the content/APIs based on its intrinsic function or by being able to look up online (in other words, may require a sandbox capability, or at the very least ability to search online)
+3. Another model either creates a knowledge graph or somehow determines the role and relative importance of each API with respect to one another (such that the user is going to learn the library/coding language/book recipes from most significant to least, or based on their specific desires/what they want to learn or start learning. The user learns and is guided by traversing the knowledge graph, either focusing on clusters that relate to their interests that they;ve specified, or by navigating the largest nodes and the APIs therein
+4. Another agent, now in possession of an entire vector database of this information, will create approximately 50-200 templates to generate problems based on the contents of the vector database. We will need to implement some form of checking algorithm such that we ensure virtually all the contents of that vector db are covered, making sure we have tons of variations, mutations, and modalities to learn the contents of whatever the user has imported and wants to learn. There will be certain parameters for the template space creation, like: 
+
+ - What are you hoping to learn from your documentation? (If answer is 'everything' or 'all of it', leave blank)
+	User defines intention here. If learning pandas, and they want to learn everything about plotting in pandas, will start the process for template generation in the nodes that deal with plotting and expand outwards until hitting the upper N limit for APIs, described in the line below. If left blank, will just use some rough measure of 'importance' to dictate the graph walk probabilistically 
+ - Top N APIs
+	Limits the total number of APIs to be used from the documentation based on either commonality/importance/subjective user intention 
+ - Minimum number of valid templates per atomic API 
+	i.e. for each smallest unit of code unique to the thing you've imported, what is the minimum number of question templates you want for any given API? Would not apply to recipes
+ - Minimum number of valid templates per conglomerate API
+	i.e. same idea as above but for code recipes or structure that requires multiple APIs put together
+ - Exclude other libraries
+	this will default to no and the user will be discouraged from changing it. This basically says, are you okay with some other library code being included in your questions, or do you need purely Python standard library + your imports only)
+ - Max/min APIs per template 
+	self explanatory; should the agents be coming up with 	mainly small, individual problems, or long, complex templates; will default to 1 through 5 depending on how things go
+ - Include code recipes/patterns
+	This would be more applicable for something like a book, such as Fluent Python. Very rarely is code presented individually, it's usually presented in the form of showing an entire class, or an entire function, etc. The way I'm considering it, there are basically three semantic units of code per our imports: atomic APIs, molecular (conglomerate) APIs, and recipes. Atomic APIs are individual functions, methods, objects, syntax particles, etc. Molecular APIs are APIs that typically only come in groups; for example, you are only ever going to see 'self.' if previously someone has defined a class. These are molecular in nature. They are still extremely general, it's just that they don't exist in isolation. A recipe is different in that it typically will require a combination of APIs, molecular and atomic, from different libraries, usually to achieve a specific purpose. These will primarily be found in books or tutorials. For example, when the author of fluent python defines an abstract class to make a functional 'deck of cards,' this is a specific cluster of code, designed to achieve a specific goal or build a specific entity. Defining a class and using 'self.' requires multiple APIs (molecular) but it is still a completely general structure. Recipes will be included by default but will be most important when importing books, but they can be excluded altogether
+ - Recipe template mutation level (int)
+	Describes how much the recipes should altered when templates are created for the user to be tested on. Setting this value to a 1 basically signifies: test me on the verbatim original recipe, just perhaps segregate it into smaller, meaningful parts, and build up so that eventually I can rewrite all the recipes in the book verbatim. Maybe change some variable or function names, but keep everything fundamentally the same. A 5 means: keep most of the original structure of the recipes, but give me questions derived from templates which make some meaningful mutations so that I have to think a bit more about what I'm doing, that are not exactly the same as the original recipe unless the original is necessarily the best way to achieve the goal (e.g. algorithm implementation). A 10 means: radically alter the original structure of the recipes so that, although they reach a similar goal as the original and use some of the same pieces, the route to get to that end point is extremely different from the original. Note that when creating templates, a 10 CAN INCLUDE templates that are very similar to the original recipe, but a 1 CANNOT INCLUDE templates that are extremely different from the original. 
+ - Min/max number of templates: Provides a range for the agents to work within, will probably set default as 50 (for smaller sources/libraries) and 250
+ 5. Templates are created in batches using known APIs/recipes, starting with the most common and working their way down. Say that the agent begins, the task should look something like: "create 10 templates that these 50 APIs can be used within," in all likelihood, once those 10 templates have been created, if there's 1000 APIs, the 10 templates should work with many more than just the 50 APIs upon which the original templates were based. The agent will need to check to check at each stage to see how many APIs still do not have the minimum required number of templates (or katas). My intuition is that the search space will follow a roughly zipf-like distribution on the way down, until there are only a very small number of APIs left which the agent can tackle directly. 
+ 6. Each template should be saved with a corresponding evaluation script, to ensure that the minimum requirements are met when being graded. My thinking was to save each template as either a .yaml or .json file, in which the question template is saved, the generic/static hints (i.e. not LLM generated, which will be an option for the user if the generic hints aren't sufficient or the user needs to learn something with greater, individualized depth), perhaps a complexity score and a difficulty score (difficulty may be more specific to the particular permutation of APIs that the template gets filled with), the evaluation template, and the valid API permutations within that template (all APIs, when they get saved to the vectordb, will have a unique identifier number/signature; the valid_permutations entry will include tuples containing the order of valid APIs per their position in the template, e.g. if a template has two places where APIs can be input, spots 1 and 2, and we've identified that: if API id 4 is in 1, then API id 7, 300, and 101 can go into position 2, then we'd have three tuples: (4,7),(4,300),(4,101). Admittedly I am worried about the potential for state space explosion here, but I'm not sure of a better way we can mark each template with its valid APIs) I'm not against keeping more info in these template files if you have relevant suggestions or necessary fixes if I'm missing something. 
+ 7. At this point, the user should be good to begin their study session. From the homepage, the user will see their current sessions in a UI not dissimilar from the image I've sent you (although also considering a neobrutalist style but if I can't get an LLM to do it I can't do it myself). From here, a terminal session would open up, and the user would begin their session. At the top of the TUI, the user would see the name of our program, the name of their study session, the location for their imported source docs, and a menu where they can select the following:
+	- Study Walk: user 'walks the knowledge/importance graph' that was created during the session's inception. No time limit, no specific path or set number of nodes to traverse. Just getting questions and answering them to the best of the user's ability. In this mode, whenever a user hits a completely novel node (or, a node that contains a novel API/recipe), before being presented with the question, they are shown a screen that says "New Content." This screen will display the new APIs the user is about to encounter, a description/basically all the relevant information about what it is and what it does, plus a usage example of that one individual API (e.g. Displays the API in a very brief code snippet along with the output; for APIs that cannot be used in this way, e.g. Dunder/magic methods, they will only be offered a description)
+	- Custom Walk: study walk that allows the user to set time limits, question limits, change their starting position on the graph or traversal order (remember, the knowledge graph itself may be created according to a user's specific goals: this allows them to pinpoint, within those goals, at which node they'd want to start on)
+	- Stroll (Memory Lane): this is the equivalent to doing SRS reviews. I have my own custom SRS algorithm that I want to implement for this, so that portion of the code is already done and we will not be worried about it right now. The user will click this option to revisit questions they've already studied. Questions that contain APIs which are problematic are seen more frequently than those which the user tends to get correct more often.
+	- Seen Terms: Presents a list in a spreadsheet-like fashion which displays all the APIs or recipes the user has seen at least once, along with the description/definition thereof. The user has the option to view more details about each API using the command line: e.g. --api {api name} --details (include some args here to display the number of times the user has gotten a question with the API, number of times they've used it right or wrong, relative importance of the API, the probability that the user will subsequently remember it the next time they see it which will come from my SRS engine)
+	- Flashcardify: Turns all the seen terms (or, typically, a subset thereof for the problematic ones) into flashcards. Will default to just export the API/recipe and the definition or functional info (e.g. if it's a function, include its args). User can specify a good amount of detail regarding how they want the cards, though, such as if they want to export actual questions they've missed as cloze cards (or ones that they got right, if they wanted that for some reason), the number of cards they want, if they want random ones or if they want to set it based on a certain cutoff threshold (e.g. export flashcards for all the APIs that the SRS engine says I have less than a 75% chance of getting right next time I see it/for all the APIs which, for the last time I saw them, I missed it/for all the APIs which I have at least 2 misses for/for all the APIs which are in the top N most common nodes from my knowledge graph or most important APIs)
+	- Mini-Quiz: Generates a custom mini quiz based on selected APIs, with largely similar options to those presented when the user goes to use the Flashcardify option. Quizzes present questions in a very different format compared to the study walks - they are inspired more so by the 'getcracked.io' model, in which the user is tested on things that they don't get just from knowing how to write code. Questions can be: 
+		a. Multiple choice
+		b. Answer "what is the output of this code?" 
+		c. Other knowledge questions (what is the dtype of {API}), perhaps even questions which pull from other knowledge from the imported docs if they are present; if importing scikit learn docs, for example, could ask about machine learning/data science principles, other good use practices, gotchas, etc.
+		d. True/False
+	These quizzes are generated on demand using agents like with the question/template generation. Quizzes can be timed if the user desires, can select difficulty, specific APIs, types of questions they want to see, etc. The user has the option to "save quiz and results" where they will be able to review the questions from the program's homepage later if they want to keep it. If they save it, there will also be the option to turn IT into flashcards as well when clicking the Flashcardify option (make sure settings get adjusted given the question types are very different, settings will likely be way more basic). 
+	- Cartographer: SPECIFICALLY USING THE GEPHI API FOR PYTHON, displays the actual knowledge graph for the user's study session - will be interactive and the user can customize it to a certain degree (will not have full Gephi functionality). The default graph will display all the APIs/recipes as nodes, and the connections between them. Nodes/edges that the user has traversed will be highlighted in a different color (say ultramarine), and as the user completes more questions for each given node the corresponding portion of the graph will be more that color than the default color of the graph. Portions of the graph that are very far away from anything the user has traversed yet will be lower in opacity, fading based on how far away they are until they hit the lower bound of 30% opacity. When the user hovers over a node, it will display the API and its description. They should be able to save this file if they want. Since they're clicking on the cartographer option in the terminal, the graph will actually pop up on the program's homepage (or in a separate window, not sure which is better). 
+	- Options: Potentially include additional options regarding the session here or omit command line args in favor of putting those settings here instead. Not sure which I prefer yet. 
+	- Exit: Closes the terminal to return to the program homepage. 
+	
+
+
+################
+Additional notes
+################
+
+ - I need you to consider what I am missing, what I am not accounting for, or what needs to be modified in this design plan. Yes, I know that it is ambitious, but I will make this program come hell or high water. 
+ 
+ - If I didn't mention it, flashcards will default to just being exported as a csv file 
+ 
+ - The preferred method for databases will be sqlite3 for our normal data and chroma for our vector db
+ 
+ - We need to consider which LLMs would be the best to use for our agents. Can portions of our pipeline rely on extremely small, JSON structured agents? How do we specifically go about generating the templates/katas that will make our questions? Should we use different tiers of agents, such that we have some generating easy templates, some generating moderate templates, and some generating fairly complex/difficult templates? ***Consider what models we will need to deploy in order to successfully create the pipeline***
+ 
+ - *** HOW CAN WE USE PRIMITIVES/CONTENT SPECIFIC DSL IN ORDER TO SIMPLIFY THE QUESTION/TEMPLATE GENERATION PROCESS. THERE MUST BE A WAY WE CAN INCORPORATE THEM SOMEHOW, I FEEL LIKE THERE MUST BE BUT I DON'T KNOW HOW ***
+ 
+ - What portions of the overall pipeline should we consider languages like C++ or Golang for, to try and speed up the creation of each study session (particularly large study sessions) as much as possible?
+ 
+ - How do we make sure that the templates are not overlapping/the questions are unique? 
+ 
+ - Should we consider custom embeddings or more niche embedding models from huggingface? Should we use a reranker? 
+ 
+ - This is easily the biggest project I've attempted to tackle on my own, and it's not even close. I want to be able to run this locally, on my machine, without a server. Just as an executable program (ideally). I already have a similar app project that the GUI is based on (re the picture that's attached to the prompt). I want to be able to click a button, have the program launch, enter my API keys in a pop up window, and be able to study. I also want to later expand this to include virtually any programming language and, if it's possible, incorporate things like Bash, Git, Docker, Assembly, SQL (and its various dialects). 
+ 
+ How do we do this? 
+&&&
+
+&&& # PROMPT ORIGINAL
+Intro (assistant)
+
+Codetutor — Project Overview (Knowledge File)
+
+This project is a local-first study and practice environment that turns real documentation and code into high-quality, runnable study items. It ingests source materials, discovers and indexes APIs and common “recipes,” builds a knowledge graph to understand relationships, and uses a small, typed template DSL to generate diverse practice items with deterministic evaluation. A compact TUI guides sessions (Walk, Stroll/SRS, Mini-Quiz, Cartographer), while all data stays on the user’s machine by default. The first milestone targets Python end‑to‑end; other languages can be added later by repeating a well-defined per-language checklist (parser, DSL translator, sandbox runner, oracles). The system emphasizes reproducibility, safety, and pedagogy: tests are deterministic when possible, nondeterministic items are handled structurally, and coverage follows a competency rubric—so learners progress with confidence.
+
+
+
+## Ingestion & API Extraction
+
+The workflow for the program should be as follows: 
+1. Docs/code presented to agents
+2. Agents go through documentation in chunks and mark all unique APIs, patterns, recipes, etc. Any semantically meaningful unit or combination of units of APIs - also store any necessary and meaningful information related to each of these units/APIs (see [*Q: What exactly should be stored for each API?*]
+); Agents should also have some ability to record information about the content/APIs based on its intrinsic function or by being able to look up online when absolutely needed (in other words, may require a sandbox capability, or at the very least ability to search online)
+3.
+
+
+***
+[*Q: What exactly should be stored for each API?*]
+Answer:
+- Stable ID, human label, kind (function/method/class/recipe).
+- Package/module and version constraints (min_supported, max_tested).
+- Signature: param names/types/defaults/varargs; return type; side effects; exceptions.
+- Short description + “when to use”; minimal runnable example (+ expected output if deterministic).
+- Dependencies/prereqs and incompatibilities; related APIs and aliases.
+- Tags (topic/domain/difficulty/modality); importance cues; doc/source URL + anchors.
+- Unit tests/evaluation hooks; embeddings for text and code; provenance (path/URL, line ranges, timestamp).
+
+[*Q: How do agents safely look up info or execute code?*]
+Answer:
+- Offline by default; online lookup must be explicitly enabled.
+- Execution runs in per-language sandboxes (ephemeral FS, no network, resource caps, seccomp profile).
+- Python in nsjail/firejail; Node/Deno with network disabled; native code in rootless containers with strict limits.
+- Capture stdout/stderr/exit code; sandbox wiped after run.
+
+
+## Knowledge Graph & Importance
+
+Another model either creates a knowledge graph determines the role and relative importance of each API with respect to one another (such that the user is going to learn the library/coding language/book recipes from most significant to least, or based on their specific desires/what they want to learn or start learning. The user learns and is guided by traversing the knowledge graph, either focusing on clusters that relate to their interests that they've specified, or by navigating the largest nodes and the APIs therein
+4. Another agent, now in possession of an entire vector database of this information, will create approximately 50-200 templates to generate problems based on the contents of the vector database. We will need to implement some form of checking algorithm such that we ensure virtually all the contents of that vector db are covered, making sure we have tons of variations, mutations, and modalities to learn the contents of whatever the user has imported and wants to learn. There will be certain parameters for the template space creation, like: 
+
+ - What are you hoping to learn from your documentation? (If answer is 'everything' or 'all of it', leave blank)
+	User defines intention here. If learning pandas, and they want to learn everything about plotting in pandas, will start the process for template generation in the nodes that deal with plotting and expand outwards until hitting the upper N limit for APIs, described in the line below. If left blank, will just use some rough measure of 'importance' to dictate the graph walk probabilistically 
+ - Top N APIs
+	Limits the total number of APIs to be used from the documentation based on either commonality/importance/subjective user intention 
+ - Minimum number of valid templates per atomic API 
+	i.e. for each smallest unit of code unique to the thing you've imported, what is the minimum number of question templates you want for any given API? Would not apply to recipes
+ - Minimum number of valid templates per conglomerate API
+	i.e. same idea as above but for code recipes or structure that requires multiple APIs put together
+ - Exclude other libraries
+	this will default to no and the user will be discouraged from changing it. This basically says, are you okay with some other library code being included in your questions, or do you need purely Python standard library + your imports only)
+ - Max/min APIs per template 
+	self explanatory; should the agents be coming up with 	mainly small, individual problems, or long, complex templates; will default to 1 through 5 depending on how things go
+ - Include code recipes/patterns
+	This would be more applicable for something like a book, such as Fluent Python. Very rarely is code presented individually in books (unless it's an introductory book teaching you individual pieces of a standard library), it's usually presented in the form of showing an entire class, or an entire function, etc. The way I'm considering it, there are basically three semantic units of code per our imports: atomic APIs, molecular (conglomerate) APIs, and recipes. Atomic APIs are individual functions, methods, objects, syntax particles, etc. Molecular APIs are APIs that typically only come in groups; for example, you are only ever going to see 'self.' if previously someone has defined a class. These are molecular in nature. They are still extremely general, it's just that they don't exist in isolation. A recipe is different in that it typically will require a combination of APIs, molecular and atomic, from different libraries, in order to achieve a specific purpose. These will primarily be found in books or tutorials. For example, when the author of Fluent Python defines an abstract class to make a functional 'deck of cards,' this is a specific cluster of code, designed to achieve a specific goal or build a specific entity. Defining a class and using 'self.' requires multiple APIs but it is still a completely general structure. Recipes will be included by default but will be most important when importing books, but they can be excluded altogether if the user chooses. 
+ - Recipe template mutation level (int)
+	Describes how much the recipes should altered when templates are created for the user to be tested on. Setting this value to a 1 basically signifies: test me on the verbatim original recipe, just perhaps segregate it into smaller, meaningful parts, and build up so that eventually I can rewrite all the recipes in the book verbatim. Maybe change some variable or function names, but keep everything fundamentally the same. A 5 means: keep most of the original structure of the recipes, but give me questions derived from templates which make some meaningful mutations so that I have to think a bit more about what I'm doing, that are not exactly the same as the original recipe unless the original is necessarily the best way to achieve the goal (e.g. algorithm implementation). A 10 means: radically alter the original structure of the recipes so that, although they reach a similar goal as the original and use some of the same pieces, the route to get to that end point is extremely different from the original. Note that when creating templates, a 10 CAN INCLUDE templates that are very similar to the original recipe, but a 1 CANNOT INCLUDE templates that are extremely different from the original. 
+ - Min/max number of templates: Provides a range for the agents to work within, will probably set default as 50 (for smaller sources/libraries) and 250
+ 5. Templates are created in batches using known APIs/recipes, starting with the most common and working their way down. Say that the agent begins, the task should look something like: "create 10 templates that these 50 APIs can be used within," in all likelihood, once those 10 templates have been created, if there's 1000 APIs, the 10 templates should work with many more than just the 50 APIs upon which the original templates were based. The agent will need to check to check at each stage to see how many APIs still do not have the minimum required number of templates (or katas). My intuition is that the search space will follow a roughly zipf-like distribution on the way down, until there are only a very small number of APIs left which the agent can tackle directly. 
+ 6. Each template is saved as a single JSON/YAML record containing:
+- template metadata: id, archetype, language, provenance, created_at
+- resources: file references or inline data
+- allowed_ops: imports, explicit APIs, and capability groups (op_groups)
+- constraints: limits, io policy, disallow list, and flexible require rules:
+  - must_use_any_of / must_use_all_of / at_least_k_from (by group name)
+- output_contract: required variable, accepted types, structural/value properties, optional equality/tolerance
+- task: signature, instruction_brief, student_view; recipes include steps and artifacts
+- checker: tests (deterministic), optional canonicalize hint (e.g., normalize Polars→Pandas)
+- mutation_policy: whether the generator may widen/narrow the scope for this template
+- metadata: difficulty/complexity predictions, seed, library versions, content hashes
+
+We do NOT enumerate all valid API permutations. Instead, we:
+- encode constraints declaratively (groups + require rules),
+- use a small constraint solver to find one or more valid “witness” fills at generation time,
+- record the seed and a witness id so we can reproduce the exact instance later.
+
+Coverage is tracked per API and per API-pair/edge in the knowledge graph; generation is biased toward under-covered regions rather than enumerating Cartesian products.
+
+Your additions — Knowledge Graph & Importance
+
+[*Q: How should the knowledge graph and “importance” be computed?*]
+Answer:
+- Nodes: atomic APIs, molecular APIs (common patterns), and recipes; edges: calls/imports, co‑occurrence, prerequisite‑of.
+- Build edges from docs (links/sections), example call graphs, and import trees; augment with co‑usage in generated templates.
+- Compute degree/PageRank/betweenness and combine with document frequency; provenance‑weight signals (citations > code co‑use > text).
+- Cluster with HDBSCAN/Leiden on k‑NN embeddings to find topical regions; personalize via re‑weighting around intent.
+- Persist to GEXF/GraphML and a compact SQLite adjacency for fast traversal in the TUI.
+
+
+## Template DSL & Generation
+
+My description
+
+ 7. At this point, the user should begin their study session. From the homepage, the user will see their current sessions in a UI not dissimilar from the image I've sent you. From here, a terminal session would open up, and the user would begin their session. At the top of the TUI, the user would see the name of our program, the name of their study session, the location for their imported source docs, and a menu where they can select the following:
+	- Study Walk: user 'walks the knowledge/importance graph' that was created during the session's inception. No time limit, no specific path or set number of nodes to traverse. Just getting questions and answering them to the best of the user's ability. In this mode, whenever a user hits a completely novel node (or, a node that contains a novel API/recipe), before being presented with the question, they are shown a screen that says "New Content." This screen will display the new APIs the user is about to encounter, a description/basically all the relevant information about what it is and what it does, plus a usage example of that one individual API (e.g. Displays the API in a very brief code snippet along with the output; for APIs that cannot be used in this way, e.g. Dunder/magic methods, they will only be offered a description)
+	- Custom Walk: study walk that allows the user to set time limits, question limits, change their starting position on the graph or traversal order (remember, the knowledge graph itself may be created according to a user's specific goals: this allows them to pinpoint, within those goals, at which node they'd want to start on)
+	- Stroll (Memory Lane): this is the equivalent to doing SRS reviews. I have my own custom SRS algorithm that I want to implement for this, so that portion of the code is already done and we will not be worried about it right now. The user will click this option to revisit questions they've already studied. Questions that contain APIs which are problematic are seen more frequently than those which the user tends to get correct more often.
+	- Seen Terms: Presents a list in a spreadsheet-like fashion which displays all the APIs or recipes the user has seen at least once, along with the description/definition thereof. The user has the option to view more details about each API using the command line: e.g. --api {api name} --details (include some args here to display the number of times the user has gotten a question with the API, number of times they've used it right or wrong, relative importance of the API, the probability that the user will subsequently remember it the next time they see it which will come from my SRS engine)
+	- Flashcardify: Turns all the seen terms (or, typically, a subset thereof for the problematic ones) into flashcards. Will default to just export the API/recipe and the definition or functional info (e.g. if it's a function, include its args). User can specify a good amount of detail regarding how they want the cards, though, such as if they want to export actual questions they've missed as cloze cards (or ones that they got right, if they wanted that for some reason), the number of cards they want, if they want random ones or if they want to set it based on a certain cutoff threshold (e.g. export flashcards for all the APIs that the SRS engine says I have less than a 75% chance of getting right next time I see it/for all the APIs which, for the last time I saw them, I missed it/for all the APIs which I have at least 2 misses for/for all the APIs which are in the top N most common nodes from my knowledge graph or most important APIs)
+	- Mini-Quiz: Generates a custom mini quiz based on selected APIs, with largely similar options to those presented when the user goes to use the Flashcardify option. Quizzes present questions in a very different format compared to the study walks - they are inspired more so by the 'getcracked.io' model, in which the user is tested on things that they don't get just from knowing how to write code. Questions can be: 
+		a. Multiple choice
+		b. Answer "what is the output of this code?" 
+		c. Other knowledge questions (what is the dtype of {API}), perhaps even questions which pull from other knowledge from the imported docs if they are present; if importing scikit learn docs, for example, could ask about machine learning/data science principles, other good use practices, gotchas, etc.
+		d. True/False
+	These quizzes are generated on demand using agents like with the question/template generation. Quizzes can be timed if the user desires, can select difficulty, specific APIs, types of questions they want to see, etc. The user has the option to "save quiz and results" where they will be able to review the questions from the program's homepage later if they want to keep it. If they save it, there will also be the option to turn IT into flashcards as well when clicking the Flashcardify option (make sure settings get adjusted given the question types are very different, settings will likely be way more basic). 
+	-
+Your additions — Template DSL, Generation & State‑Space
+
+[*Q: How do we avoid state‑space explosion for valid API permutations?*]
+Answer:
+- Use a small DSL: typed slots + constraints instead of enumerating permutations.
+- Validate candidates by signature compatibility, imports, and predicates (shape/dtype guards); sample with constraint solving/MCTS.
+- Canonicalize to AST + hash (with SimHash/MinHash) to deduplicate; track per‑API coverage and bias toward under‑covered areas.
+
+[*Q: HOW CAN WE USE PRIMITIVES/CONTENT SPECIFIC DSL TO SIMPLIFY GENERATION?*]
+Answer:
+- Define a Template DSL with typed slots (APICall, Literal, CodeBlock), constraints, and checkers.
+- Example concept: TEMPLATE(name="GroupByThenPlot") with slots DF (DataFrame), GROUP_KEY (str), PLOT_KIND (enum).
+- Keep DSL JSON‑serializable; compile to runnable code via short translators per language; validate in sandbox before execution.
+
+
+## Evaluation & Determinism
+
+- Tests must fix seeds, time, locale, and thread counts; plotting/I‑O tasks use structural or metadata oracles rather than fragile string matches.
+- Inherently nondeterministic or network‑bound items are marked NON‑RUNNABLE and validated statically.
+
+
+## User Interface & Modes (TUI)
+
+Notes: The TUI exposes Walk, Custom Walk, Stroll (SRS), Seen Terms, Flashcardify, Mini‑Quiz, Cartographer, Options, Exit. A simple state machine governs transitions.
+
+
+## Cartographer & Visualization
+
+
+Cartographer: Displays the actual knowledge graph for the user's study session - will be interactive and the user can customize it to a certain degree. Gephi is preferred if Java can be implemented within the majority Python program. The default graph will display all the APIs/recipes as nodes, and the connections between them. Nodes/edges that the user has traversed will be highlighted in a different color (say ultramarine), and as the user completes more questions for each given node the corresponding portion of the graph will be more that color than the default color of the graph. Portions of the graph that are very far away from anything the user has traversed yet will be lower in opacity, fading based on how far away they are until they hit the lower bound of 30% opacity. When the user hovers over a node, it will display the API and its description. They should be able to save this file if they want. Since they're clicking on the cartographer option in the terminal, the graph will actually pop up on the program's homepage (or in a separate window, not sure which is better). 
+	- Options: Potentially include additional options regarding the session here or omit command line args in favor of putting those settings here instead. Not sure which I prefer yet. 
+	- Exit: Closes the terminal to return to the program homepage. 
+
+
+[*Q: “Gephi API for Python” — what’s realistic?*]
+Answer:
+- Gephi’s toolkit is Java; Python integrates by (a) exporting GEXF/GraphML for manual open, or (b) one‑way Graph Streaming (HTTP) to a running Gephi.
+- In‑app viz should use an embedded library with better aesthetics than NetworkX plotters (e.g., PyVis/vis‑network, Cytoscape.js via a webview, or ECharts).
+
+
+## Additional Notes / Open Questions
+
+
+Additional notes
+################
+ 
+ 
+ - If I didn't mention it, flashcards will default to just being exported as a csv file 
+ 
+ - The preferred method for databases will be sqlite3 for our normal data and chroma for our vector db
+ 
+ - We need to consider which LLMs would be the best to use for our agents. Can portions of our pipeline rely on extremely small, JSON structured agents? How do we specifically go about generating the templates/katas that will make our questions? Should we use different tiers of agents, such that we have some generating easy templates, some generating moderate templates, and some generating fairly complex/difficult templates? ***Consider what models we will need to deploy in order to successfully create the pipeline***
+ 
+ - *** HOW CAN WE USE PRIMITIVES/CONTENT SPECIFIC DSL IN ORDER TO SIMPLIFY THE QUESTION/TEMPLATE GENERATION PROCESS. THERE MUST BE A WAY WE CAN INCORPORATE THEM SOMEHOW, I FEEL LIKE THERE MUST BE BUT I DON'T KNOW HOW ***
+ 
+ - What portions of the overall pipeline should we consider languages like C++ or Golang for, to try and speed up the creation of each study session (particularly large study sessions) as much as possible?
+ 
+ - How do we make sure that the templates are not overlapping/the questions are unique? 
+ 
+ - Should we consider custom embeddings or more niche embedding models from huggingface? Should we use a reranker? 
+ 
+ - This is easily the biggest project I've attempted to tackle on my own, and it's not even close. I want to be able to run this locally, on my machine, without a server. Just as an executable program (ideally). I already have a similar app project that the GUI is based on (re the picture that's attached to the prompt). I want to be able to click a button, have the program launch, enter my API keys in a pop up window, and be able to study. I also want to later expand this to include virtually any programming language and, if it's possible, incorporate things like Bash, Git, Docker, Assembly, SQL (and its various dialects).
+
+
+- Missing pieces to add: deterministic ingestion (tree‑sitter, section anchors), evaluation harnesses per template, plagiarism/overlap guard, privacy toggle, caching/resumability, local telemetry for mastery/error types.
+- Models/agents (local-first options): Llama 3.1 8B or Gemma 2 9B for orchestration; Qwen2.5‑Coder/DeepSeek‑Coder for codegen/repair; Phi‑3.5 Mini for small utilities; embeddings BGE‑M3 or Arctic‑Embed v2; reranker bge‑reranker‑v2‑m3 or Jina v2.
+- C++/Go roles: high‑throughput parsing (native ext), heavy graph ops, and fast isolated evaluators as micro‑services; Python remains orchestration glue.
+- Uniqueness: AST hashes + SimHash/MinHash + embedding similarity + structural diversity rules; explicit similarity caps per difficulty bucket.
+- Embeddings/rerankers: start with strong off‑the‑shelf models; add reranking only if latency budgets are met; consider fine‑tuning later with domain pairs.
+
+
+## How do we do this?
+
+My description
+
+How do we do this?
+
+
+Your description/additions
+
+Your additions — Local‑First MVP Path
+
+Answer:
+- Package as a desktop app with an installer; first‑run config chooses offline vs optional online lookup.
+- Ingestion parses docs/books with language‑aware chunking; vectors to a local store; APIs extracted via tree‑sitter + heuristics.
+- Graph built in NetworkX/igraph; export to GEXF; stream to Gephi if user opens it.
+- Generation pipeline creates templates + checkers; cache artifacts; resume long runs; TUI drives Walk/Custom/Stroll/Seen/Flashcard/Mini‑Quiz/Cartographer.
+
+
+
+## Additional requirements/guarantees
+
+~HARD REQUIREMENTS & GUARANTEES (Authoritative — overrides any ambiguous wording elsewhere)
+
+Network & Privacy Policy (single source of truth):
+- Default = OFFLINE. No network calls, telemetry, or external streaming.
+- Per-subsystem network rules: Ingestion (offline only), Generation (offline only), Study (offline only), Cartographer (export-only), Updates (manual, offline packages).
+- Optional ONLINE mode must be explicitly enabled per session and shows a live indicator. Even then, only RAG lookups to whitelisted sources are allowed; no user data leaves the machine.
+- Gephi: strictly EXPORT/STREAM-OUT only; no inbound control, no remote telemetry.
+
+Sandbox Threat Model & Guarantees:
+- Threat model: untrusted code snippets derived from public docs or user input.
+- Isolation: per-run ephemeral FS, no home dir access, network = disabled, GPU = disabled, syscalls filtered (seccomp), CPU/mem/time caps.
+- Artifacts captured: stdout/stderr/exit code; the sandbox FS is wiped post-run.
+- Execution is OPTIONAL; examples are validated statically when execution is denied.
+
+Determinism & Versioning:
+- All executed items must set seeds, freeze time/locale, and pin exact dependency versions via lockfiles. If env mismatch is detected, execution is blocked and the item is marked NON-RUNNABLE.
+- Nondeterministic APIs are evaluated with property or structural checks only; no brittle gold-string comparisons.
+
+Licensing & Redistribution:
+- Only ingest content under licenses that allow local processing for personal study. Redistribution of third-party text/code is disabled by default.
+- Exports include only our generated paraphrases and original prompts; never raw third-party passages or code beyond short, attributed snippets (≤ a few lines).
+
+Metrics & Success Criteria:
+- Primary outcomes: time-to-first-correct, retention at +7d/+30d, error-type reduction.
+- Secondary: coverage by competency, latency budgets met.
+- Any other metric is a proxy and cannot overrule primary outcomes.
+
+MVP Scope (binding):
+- Language coverage: Python ONLY for generation/evaluation; other languages are out-of-scope for MVP.
+- RAG is optional and disabled by default; reranking is off unless latency < 300 ms @ p95.
+- Packaging: an installer that bundles runtimes and creates a local model cache. Not a single static binary.
+
+These guarantees supersede any earlier text that could be read inconsistently.~
+
+
+
+~GLOSSARY (binding)
+- Atomic API: a single callable (function/method) or op.
+- Molecular API: a stable pattern that composes multiple atomic APIs into a common task.
+- Recipe: a multi-step, narrated solution with constraints and checks.
+- Template: a parameterized program skeleton that becomes a study item when filled.
+- Study item: a concrete, runnable (or statically checkable) instance used in sessions.
+- Mutation level: the degree of variation applied when generating alternates for a template.
+- Stroll: a lightweight, spaced review mode that interleaves previously mastered items with one new item.~
+
+~AGENT ROLES & OWNERSHIP (RACI)
+- Orchestrator: Responsible (R) for pipeline order; Accountable (A) for final artifacts.
+- Extractor: R for API/recipe mining; C to Grapher; I to Orchestrator.
+- Grapher: R for graph build/metrics; C to Orchestrator.
+- Templater: R for DSL templates; C to Evaluator.
+- Evaluator: R for checkers/tests; A for pass/fail results.
+- Repair: R for automatic fixes under Evaluator constraints; I to Orchestrator.
+No overlapping accountability is allowed.~
+
+~ERROR CLASSES & HANDLING
+- INGESTION_ERROR (recoverable): skip item, log provenance, continue.
+- PARSE_ERROR (recoverable): store raw chunk, mark for manual review.
+- GENERATION_ERROR (recoverable): backoff/retry with capped attempts.
+- EVAL_ERROR (recoverable): quarantine template; no study use.
+- ENV_MISMATCH (blocking): mark item NON-RUNNABLE until env is repaired.
+All handlers are transactional and rollback on failure.~
+
+~DATA SEPARATION
+- Public index: embeddings/metadata derived from licensed sources.
+- Private index: user notes/examples; excluded from exports and online lookups.
+- Cross-contamination prevention: private items are never used to train or rerank public items.~
+
+~SCALABILITY GUARDS
+- Graph size caps per run; approximate algorithms (power-iteration PageRank, sampling for betweenness).
+- HDBSCAN/Leiden run with max nodes/edges thresholds; beyond that, sampling or sharding is applied.
+- Memory budgets are enforced; tasks that exceed budgets are deferred.~
+
+~DIVERSITY & FAIRNESS
+- Diversity constraints ensure multiple idioms (e.g., Pandas vs Polars) where licenses permit.
+- Importance scores cannot demote minority but pedagogically relevant APIs; curriculum ordering follows competency, not popularity.~
+
+~RUNNABLE EXAMPLES SAFETY
+- Static linting and policy checks precede any execution.
+- Banned operations: network calls, file writes outside sandbox root, subprocess spawns, device access.
+- Any violation blocks execution and downgrades the item to NON-RUNNABLE with static-only evaluation.~
+
+~USER JOURNEY (MVP)
+1) Choose a Goal (task/topic) → 2) Suggested Path (competency-based) → 3) Study Walk (guided items) → 4) Stroll (spaced reinforcement) → 5) Cartographer (optional visual map) → 6) Review & Export.
+Modes outside this flow are hidden until unlocked by progress checkpoints to reduce cognitive load.~
+
+~CLAIMS & GUARANTEES LANGUAGE
+- Performance statements (e.g., 'boosts precision') are hypotheses until validated on our evaluation set; the app displays empirical results or removes the claim.~

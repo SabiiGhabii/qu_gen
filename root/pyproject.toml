@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codetutor"
+version = "0.1.0"
+description = "Codetutor API indexer and trait pipeline"
+requires-python = ">=3.9"
+dependencies = [
+  "griffe>=0.49",
+  "docstring-parser>=0.16",
+  "blake3>=0.3.3",
+  "lark>=1.1",
+  "z3-solver>=4.12",
+  "pandas>=2.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"codetutor.adapters.python.scan" = ["schema.sql"]
+"codetutor.core.dsl" = ["ctdsl.lark"]

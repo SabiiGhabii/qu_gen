@@ -1,0 +1,14 @@
+griffe==1.13.0
+docstring-parser==0.17.0
+beautifulsoup4==4.13.5
+lxml==6.0.1
+Sphinx==8.2.3
+docutils==0.21.2
+nbformat==5.10.4
+jupytext==1.17.3
+jedi==0.19.2
+parso==0.8.5
+blake3==1.0.5
+pytest==8.4.1
+hypothesis==6.138.13
+psutil==7.0.0

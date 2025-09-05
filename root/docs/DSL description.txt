@@ -1,0 +1,30 @@
+I'm thinking about how to construct the grammar of the DSL in Lark. It will end up being rather advanced, and it would help us (I believe) if we could integrate it with a solver like Z3. I'm going to explain my ideas to you and I want you to try and help me get started, just to help me get off the ground. I will continue to write out many more ontological traits after you help me start. 
+
+The idea is this: 
+
+All of our APIs will come with a card. Each card gives a description of the API with respect to its ontological traits. We will also probably need to define some standard python syntax as well to get started, even though we are primarily focusing on pandas. 
+
+We start with one given API. This API will ultimately be selected by the user during their quasi-random walk along the library graph. They start at a single API. This signals the first condition: 
+
+C1: The question that will be created must contain at least the API the user has selected (whether they have deliberately selected a specific API or not). 
+
+Condition 1 states that we must, at least, return a question containing this API. Let's call it A1. A1 is pulled along with its trait card. The trait card specifies a list of conditions that are necessarily true for the API selected. e.g. 
+- is function, is class, is method, must output, aggregates, mutates by, is method of, is function of, has arguments of, can input, etc.
+These traits will be used to define the set of possible additions for what APIs can and cannot be added to this first API. We will eventually guide this induction process using an approach not dissimilar to how dreamcoder induced new macros, but for now, we will just randomly search through the space of valid next APIs. From there, we go to our next condition:
+
+C2: All questions presented must fall within certain complexity bounds
+
+For now, we're going to keep it simple: have at least 2 valid APIs per question and no more than 3 APIs per question. This allows us to have a condition which functions as a natural limiting factor so that the program doesn't keep searching infinitely for more APIs. Thus, we will need to ensure that the sample space for A2 contains both the traits necessary such that it can be combined with A1, and that it has a trait like "produces valid output" or maybe even something like "is valid stop" to designate that this API can indeed be the last one in a series of APIs to produce a valid question. Again, for now, we're only producing one question at a time by randomly searching the sample space for valid APIs that can be connected to one another, but eventually we will guide this process through something like Bayesian wake sleep, NN, etc.
+
+After the two APIs have been selected to form the question, we will basically need to 'fill in the blanks' to connect the two. This can, also, be a randomly guided process for now, but eventually would be a guided search. The search continues until a question is produced that passes the sandbox check, and produces an output that gives us something which can be checked (e.g. the output itself has certain unique characteristics that the user will have to produce using the same APIs our program used to produce it). 
+
+After passing the checks, the NL portion of the question can be produced using either a QG model, or by some other means. The user is given the APIs they must use, and either the output is shown to the user that they need to arrive at with those APIs (if it does not cheat and hint to the user how to produce the output itself) or a description thereof is provided. The user then must use the same APIs and output a solution which possesses the same traits as our system's, while not strictly requiring them to present the solution in a certain way. 
+
+I'm not sure exactly where the Z3 solver will be needed (check at every potential valid combination of APIs? Less often? More?) but this should give us a way to try and narrow the potential search space for every question, while still meeting the necessary conditions to produce a 'valid' question. 
+
+The DSL is going to be constructed in such a way that it resembles human grammar or logical syllogism very closely. Certain operators will be created to signify things like "by" (by way of, using, requires instrumental object), "of" (belonging to, is within, is owned by), "in order to" (produces, outputs), "can" (under certain conditions acts in a certain way, produces certain output, is possible to do so but only under certain conditions), "must" (is always the case, unconditionally acts to). These language particles can be combined with other, API specific traits in order to provide a path for the formation of questions. The API traits themselves that will be used to seed the initial cards can be determined from either docstrings or by experimentation, to take some valid examples which have already been produced and to mutate these samples at certain pieces to discover new behaviors, starting with the maximally likely to produce new, valid traits mutations and continuing the search until determining that there are no new traits to be discovered - the behavior of the API has been virtually fully determined. 
+
+How would I start to build out this DSL? 
+Is Lark still the best choice? 
+How would we need to integrate with Z3? When would we apply the Z3 checks/solving? 
+What tutorials are out there than can help me to create an advanced DSL that can achieve these things? 
